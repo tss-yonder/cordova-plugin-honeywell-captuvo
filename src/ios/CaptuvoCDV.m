@@ -60,6 +60,8 @@
                                resultWithStatus:CDVCommandStatus_OK
                                messageAsString:data];
     
+    [result setKeepCallbackAsBool:YES];
+    
     [self.commandDelegate sendPluginResult:result callbackId:self.scannerCallbackId];
 }
 
