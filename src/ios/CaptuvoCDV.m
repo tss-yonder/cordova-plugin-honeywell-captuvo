@@ -148,31 +148,56 @@
     [self.commandDelegate evalJs:@"captuvo.msrReady();"];
 }
 
-//Battery
--(void)pmBatteryStatusChange:(BatteryStatus)newBatteryStatus {
+-(int) getBatteryStatusValue:(BatteryStatus)batteryStatus {
+    switch (batteryStatus) {
+        case BatteryStatusPowerSourceConnected:
+            return -1; // |*AC*|
+        case BatteryStatus4Of4Bars:
+            return 4;
+        case BatteryStatus3Of4Bars:
+            return 3;
+        case BatteryStatus2Of4Bars:
+            return 2;
+        case BatteryStatus1Of4Bars:
+            return 1;
+        case BatteryStatus0Of4Bars:
+            return 0;
+        default:
+            return -2; // Unknown
+    }
+}
+
+-(void) publishBatteryStatus:(BatteryStatus)batteryStatus {
     if (self.batteryCallbackId) {
-        int status = 0;
-        if (newBatteryStatus == BatteryStatus0Of4Bars) status = 0;
-        else if (newBatteryStatus == BatteryStatus1Of4Bars) status = 1;
-        else if (newBatteryStatus == BatteryStatus2Of4Bars) status = 2;
-        else if (newBatteryStatus == BatteryStatus3Of4Bars) status = 3;
-        else if (newBatteryStatus == BatteryStatus4Of4Bars) status = 4;
-        else status = -1;
+        int status = [self getBatteryStatusValue:batteryStatus];
         
         //if didn't read status, send an error
-        BOOL didRead = newBatteryStatus != BatteryStatusUndefined;
+        BOOL didRead = batteryStatus != BatteryStatusUndefined;
         
         CDVPluginResult *result = [CDVPluginResult
                                    resultWithStatus: didRead ? CDVCommandStatus_OK : CDVCommandStatus_ERROR
                                    messageAsInt:status];
+        [result setKeepCallbackAsBool:YES];
         
         [self.commandDelegate sendPluginResult:result callbackId:self.batteryCallbackId];
     }
 }
+
+//Battery
+-(void)pmBatteryStatusChange:(BatteryStatus)newBatteryStatus {
+    [self publishBatteryStatus:newBatteryStatus];
+}
+
 - (void)registerBatteryCallback:(CDVInvokedUrlCommand*)command{
     [self.device startPMHardware];
     self.batteryCallbackId = command.callbackId;
     self.isMonitoringBattery = true;
+    
+    if(self.device != nil) {
+        [self.device startPMHardware];
+        BatteryStatus batteryStatus = [self.device getBatteryStatus];
+        [self publishBatteryStatus:batteryStatus];
+    }
 }
 
 -(void)logConnectionStatus:(ProtocolConnectionStatus) connectionStatus {
